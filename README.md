@@ -52,5 +52,3 @@ Key vars (defaults in code):
 ## Project layout
 
 See `packaging/systemd/` for unit templates and `install/install_os_updates_exporter.sh` for installer script.
-
-> Note: This is a clean-slate skeleton. Swap in your v0.5 parsing logic inside `internal/collector/*` for best results.
