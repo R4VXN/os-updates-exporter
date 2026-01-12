@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily os-updates-exporter self-update
+
+[Timer]
+OnBootSec=10m
+OnUnitActiveSec=24h
+RandomizedDelaySec=1h
+Unit=os-updates-exporter-update.service
+
+[Install]
+WantedBy=timers.target

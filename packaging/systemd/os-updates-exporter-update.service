@@ -1,0 +1,19 @@
+[Unit]
+Description=os-updates-exporter self-update (oneshot)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/os-updates-exporter.env
+ExecStart=/usr/local/bin/os-updates-exporter updater run
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+
+ReadWritePaths=/usr/local/bin /var/lib/os-updates-exporter /run
+
+[Install]
+WantedBy=multi-user.target

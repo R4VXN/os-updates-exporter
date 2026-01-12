@@ -1,0 +1,11 @@
+[Unit]
+Description=Run os-updates-exporter periodically
+
+[Timer]
+OnBootSec=2m
+OnUnitActiveSec=15m
+RandomizedDelaySec=2m
+Unit=os-updates-exporter.service
+
+[Install]
+WantedBy=timers.target
