@@ -6,7 +6,7 @@ Runs as a **oneshot** binary triggered by a **systemd timer** (no daemon).
 ## Quick start (build locally)
 
 ```bash
-git clone <YOUR_REPO_URL>
+git clone https://github.com/R4VXN/os-updates-exporter
 cd os-updates-exporter
 go test ./...
 go build -o os-updates-exporter ./cmd/os-updates-exporter
