@@ -119,25 +119,21 @@ install_node_exporter() {
 
   # Enable Oracle EPEL release if available (Oracle Linux)
   if command -v rpm >/dev/null 2>&1; then
-    # If oracle-epel-release is available, install it (safe if already installed)
     if dnf list --quiet oracle-epel-release-el"$(rpm -E %{rhel})" >/dev/null 2>&1; then
       sudo dnf install -y oracle-epel-release-el"$(rpm -E %{rhel})" || true
     fi
   fi
 
   sudo dnf makecache -y || true
-
-  # Package name on OL EPEL is commonly "node-exporter"
   sudo dnf install -y node-exporter
 
-  # Service name (as you saw): prometheus-node-exporter
   sudo systemctl enable --now prometheus-node-exporter
 }
 
 # ------------------------
 # Enable node_exporter textfile collector for a given dir
-# - Only for prometheus-node-exporter package style (ExecStart uses /etc/default/prometheus-node-exporter ARGS)
-# - Preserves existing ARGS, appends if missing
+# - For prometheus-node-exporter package style (ExecStart uses /etc/default/prometheus-node-exporter ARGS)
+# - FIXED: handles ARGS='' and ARGS="" reliably by force-setting ARGS if missing textfile flag
 # ------------------------
 enable_prometheus_node_exporter_textfile() {
   local textfile_dir="$1"
@@ -155,16 +151,19 @@ enable_prometheus_node_exporter_textfile() {
   sudo install -d -m 0755 "$textfile_dir"
   sudo touch "$envfile"
 
+  # If ARGS exists but doesn't contain the flag, force-set it (works for ARGS='' too).
   if sudo grep -q '^ARGS=' "$envfile"; then
     if ! sudo grep -q -- '--collector.textfile.directory' "$envfile"; then
-      if sudo grep -q '^ARGS=".*"$' "$envfile"; then
-        sudo sed -i 's/^ARGS="\([^"]*\)"/ARGS="\1 --collector.textfile.directory='"$textfile_dir"'"/' "$envfile"
-      else
-        echo "ARGS=\"--collector.textfile.directory=${textfile_dir}\"" | sudo tee -a "$envfile" >/dev/null
+      # Force set with single quotes so it works even when file previously had ARGS=''
+      sudo sed -i "s|^ARGS=.*|ARGS='--collector.textfile.directory=${textfile_dir}'|" "$envfile" || true
+      # If for some reason sed didn't apply (weird file), ensure it exists
+      if ! sudo grep -q '^ARGS=' "$envfile"; then
+        echo "ARGS='--collector.textfile.directory=${textfile_dir}'" | sudo tee -a "$envfile" >/dev/null
       fi
     fi
   else
-    echo "ARGS=\"--collector.textfile.directory=${textfile_dir}\"" | sudo tee "$envfile" >/dev/null
+    # No ARGS line at all -> append
+    echo "ARGS='--collector.textfile.directory=${textfile_dir}'" | sudo tee -a "$envfile" >/dev/null
   fi
 
   sudo systemctl restart "${svc}.service"
@@ -353,6 +352,15 @@ fi
 # ------------------------
 echo "[*] Installing systemd units (collector)..."
 sudo "$INSTALL_DIR/$BIN_NAME" install
+
+# --- FIX B: make sure metrics show up in /metrics immediately and stay readable ---
+# Run once now so os_updates.prom exists immediately (timer updates it later)
+sudo "$INSTALL_DIR/$BIN_NAME" run 2>/dev/null || true
+
+# Ensure node_exporter user can read the textfile metrics
+sudo chmod 0755 "$TEXTFILE_DIR" 2>/dev/null || true
+sudo chmod 0644 "$TEXTFILE_DIR"/*.prom 2>/dev/null || true
+# --- end FIX B ---
 
 if [[ "$WITH_UPDATER" -eq 1 ]]; then
   echo "[*] Installing systemd units (updater)..."
